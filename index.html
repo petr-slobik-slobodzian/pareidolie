@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Google tag (gtag.js) -->
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-HKM0PLW978"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-HKM0PLW978');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pareidolia Lab – Simplified UI</title>
+  <meta name="description" content="Explore the boundaries of perception with high-fidelity volumetric cloud patterns.">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+
+<body>
+  <main>
+    <div id="canvas-container"></div>
+    <div class="overlay-layer">
+      <svg id="annotation-svg" class="annotation-svg" xmlns="http://www.w3.org/2000/svg">
+        <g id="tutorial-group" style="opacity: 0; pointer-events: none;">
+          <circle id="ghost-cursor" r="15" fill="rgba(255,255,255,0.6)" stroke="white" stroke-width="2" />
+          <rect id="ghost-rect" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="2" stroke-dasharray="6"
+            rx="8" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- Top Navigation -->
+    <div class="top-nav" style="display: flex; gap: 8px;">
+      <button class="icon-btn-sm" id="lang-btn" title="Switch Language">
+        <span id="lang-icon" style="font-size: 1.2rem; pointer-events: none;">🇬🇧</span>
+      </button>
+      <button class="icon-btn-sm" id="help-btn-top" title="How to Discover" data-i18n-title="howToDiscover">
+        <svg viewBox="1851 47 22 22" width="20" height="20" stroke="currentColor" stroke-width="1.5" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M1867 64.4302H1863L1858.55 67.3902C1857.89 67.8302 1857 67.3602 1857 66.5602V64.4302C1854 64.4302 1852 62.4302 1852 59.4302V53.4302C1852 50.4302 1854 48.4302 1857 48.4302H1867C1870 48.4302 1872 50.4302 1872 53.4302V59.4302C1872 62.4302 1870 64.4302 1867 64.4302Z" />
+          <path
+            d="M1862 57.3599V57.1499C1862 56.4699 1862.42 56.1099 1862.84 55.8199C1863.25 55.5399 1863.66 55.1799 1863.66 54.5199C1863.66 53.5999 1862.92 52.8599 1862 52.8599C1861.08 52.8599 1860.34 53.5999 1860.34 54.5199" />
+          <path d="M1862 59.75H1862" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Main Control Bar -->
+    <div class="control-bar fade-in">
+      <div class="control-group">
+        <button class="control-btn wide" id="generate-clouds" title="Generate Clouds" data-i18n-title="generateClouds">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path class="st0" d="M17.5,19h-8.5c-3.9,0-7-3.1-7-7,0-3.9,3.1-7,7-7,3.1,0,5.8,2,6.7,5h1.8c2.5,0,4.5,2,4.5,4.5s-2,4.5-4.5,4.5Z"/>
+            <path class="st0" d="M20,8V4M18,6h4"/>
+          </svg>
+          <span data-i18n="generateClouds">Generate Clouds</span>
+        </button>
+        <button class="control-btn wide" id="run-pause" title="Run/Pause" data-i18n-title="runPause">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none"
+            stroke-linecap="round" stroke-linejoin="round" id="run-pause-svg">
+            <!-- Dynamic play/pause set by JS -->
+          </svg>
+          <span data-i18n="runPause">Run/Pause</span>
+        </button>
+      </div>
+      <div class="control-separator"></div>
+      <div class="control-group">
+        <div class="popover-wrapper">
+          <button class="control-btn" id="wind-direction-toggle" title="Wind Direction" data-i18n-title="windDirection">
+            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+            <span data-i18n="windDirection">Wind Direction</span>
+          </button>
+          <div class="wind-popover" id="wind-popover" style="display:none;">
+            <div class="wind-pad">
+              <button class="wind-btn" id="wind-up" title="Wind Up" data-i18n-title="windUp">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round">
+                  <path d="M12 19V5M5 12l7-7 7 7" />
+                </svg>
+              </button>
+              <button class="wind-btn" id="wind-down" title="Wind Down" data-i18n-title="windDown">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round">
+                  <path d="M12 5v14M5 12l7 7 7-7" />
+                </svg>
+              </button>
+              <button class="wind-btn" id="wind-left" title="Wind Left" data-i18n-title="windLeft">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round">
+                  <path d="M19 12H5M12 5l-7 7 7 7" />
+                </svg>
+              </button>
+              <button class="wind-btn" id="wind-right" title="Wind Right" data-i18n-title="windRight">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button class="control-btn" id="wind-flow" title="Change view" data-i18n-title="windFlow">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path class="st0" d="M10,19l10-7-10-7"/>
+            <path class="st0" d="M15.7,9c-1.7,1.5-1.8,4-.4,5.6.1.1.2.2.4.4"/>
+            <path class="st0" d="M6,12H2M4,10l-2,2,2,2"/>
+            <path class="st0" d="M8,7L4,3M6,3h-2v2"/>
+            <path class="st0" d="M8,17l-4,4M4,19v2h2"/>
+          </svg>
+          <span data-i18n="windFlow">Change view</span>
+        </button>
+        <button class="control-btn" id="settings-btn" title="Settings" data-i18n-title="settings">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+          <span data-i18n="settings">Settings</span>
+        </button>
+        <button class="control-btn" id="fullscreen-btn" title="Fullscreen" data-i18n-title="fullscreen">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <span data-i18n="fullscreen">Fullscreen</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Discovery Modal -->
+    <div id="discovery-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <button class="modal-close-x" id="modal-close-x" title="Close" data-i18n-title="close">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2 data-i18n="newDiscovery">New Discovery</h2>
+        </div>
+        <div class="split-view">
+          <div class="view-panel">
+            <span class="view-label" data-i18n="original">Original</span>
+            <div id="original-view" class="view-canvas"></div>
+            <div class="view-actions">
+              <button class="icon-btn-sm" id="rotate-left" title="Rotate 90° CCW" data-i18n-title="rotateCcw">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="view-panel">
+            <span class="view-label" data-i18n="contour">Contour</span>
+            <div id="contour-preview" class="view-canvas"></div>
+            <div class="view-actions">
+              <div class="threshold-controls">
+                <button class="icon-btn-sm" id="threshold-dec" title="Narrower" data-i18n-title="narrower">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+                <button class="icon-btn-sm" id="threshold-inc" title="Wider" data-i18n-title="wider">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="flex-direction: column;">
+          <div style="margin-bottom: 20px;">
+            <input type="text" id="discovery-name" class="dark-input" data-i18n="namePlaceholder" placeholder="Name this discovery..." inputmode="text" spellcheck="false">
+          </div>
+
+          <div id="ai-match-container"
+            style="display: none; width: 100%; margin-top: 12px; align-items: center; gap: 12px;">
+            <div
+              style="flex-grow: 1; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden; position: relative;">
+              <div id="ai-match-bar"
+                style="width: 0%; height: 100%; background: linear-gradient(90deg, #14B2E0, #03486B); transition: width 0.5s ease;">
+              </div>
+            </div>
+            <span id="ai-match-score"
+              style="font-weight: 600; font-family: monospace; min-width: 60px; text-align: right; color: var(--accent);">--%</span>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 16px; width: 100%; justify-content: flex-end;">
+            <button class="modal-btn cancel" id="close-modal">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <span data-i18n="discard">Discard</span>
+            </button>
+            <button class="modal-btn cancel" id="analyze-match">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              <span data-i18n="analyzeMatch">Analyze Match</span>
+            </button>
+            <button class="modal-btn cancel" id="save-discovery">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span data-i18n="saveFindings">Save Findings</span>
+            </button>
+            <button class="modal-btn save" id="print-discovery">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              <span data-i18n="printFindings">Print Findings</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content settings-content">
+        <button class="modal-close-x" id="settings-close-x" title="Close" data-i18n-title="close">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <div class="modal-header">
+          <h2 data-i18n="settings">Settings</h2>
+        </div>
+        <div class="settings-grid">
+          <div class="setting-row">
+            <label data-i18n="noiseScale">Noise Scale</label>
+            <div class="slider-container">
+              <input type="range" id="slider-noise" min="0.05" max="0.30" step="0.01">
+              <span class="val-display" id="val-noise">0.15</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="complexity">Complexity (Octaves)</label>
+            <div class="slider-container">
+              <input type="range" id="slider-octaves" min="2" max="10" step="1">
+              <span class="val-display" id="val-octaves">8.00</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="cloudCoverage">Cloud Coverage</label>
+            <div class="slider-container">
+              <input type="range" id="slider-coverage" min="0" max="1" step="0.05">
+              <span class="val-display" id="val-coverage">0.15</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="cloudDensity">Cloud Density</label>
+            <div class="slider-container">
+              <input type="range" id="slider-density" min="0.1" max="2" step="0.1">
+              <span class="val-display" id="val-density">1.10</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="renderContrast">Render Contrast</label>
+            <div class="slider-container">
+              <input type="range" id="slider-contrast" min="0.5" max="5" step="0.1">
+              <span class="val-display" id="val-contrast">2.15</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <label data-i18n="driftSpeed">Drift Speed</label>
+            <div class="slider-container">
+              <input type="range" id="slider-speed" min="0" max="0.2" step="0.01">
+              <span class="val-display" id="val-speed">0.05</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="flex-direction: column; align-items: center; gap: 24px;">
+          <div class="toggle-container">
+            <span class="toggle-label" data-i18n="nightMode">Night Mode</span>
+            <label class="switch">
+              <input type="checkbox" id="night-mode-toggle">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="modal-actions" style="justify-content: center; width: 100%;">
+            <button class="modal-btn cancel" id="help-btn" data-i18n="tutorial">Tutorial</button>
+            <button class="modal-btn save" id="settings-close" data-i18n="done">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modular App Entry -->
+  <script type="module" src="src/main.js?v=2"></script>
+</body>
+
+</html>
