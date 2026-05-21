@@ -143,12 +143,6 @@ export class VisualEngine {
         return noise;
       }
 
-      float worleyFbm(vec3 p, float freq) {
-        return worleyNoise(p*freq) * .625 +
-               worleyNoise(p*freq*2.) * .25 +
-               worleyNoise(p*freq*4.) * .125;
-      }
-
       float getBias(vec2 p, float seed, float aspect) {
         float b = 0.0;
         // Center-align and aspect-correct for bias shapes
@@ -176,20 +170,77 @@ export class VisualEngine {
       }
 
       float getCloudDensity(vec3 p3) {
-        float pfbm = mix(1., perlinfbm(p3, 4., uNoiseOctaves), .5);
-        pfbm = abs(pfbm * 2. - 1.);
-        float wfbm_low = worleyFbm(p3, 4.);
-        float perlinWorley = clamp(remap(pfbm, 0., 1., wfbm_low, 1.0), 0.0, 1.0);
-        float wfbm_high = worleyFbm(p3 * 2.0, 8.0);
-        float cloud = clamp(remap(perlinWorley, wfbm_high - 1.0, 1.0, 0.0, 1.0), 0.0, 1.0);
-        cloud = clamp(remap(cloud, 1.0 - uCloudCoverage, 1.0, 0.0, 1.0), 0.0, 1.0);
+        float pfbm = perlinfbm(p3 * 0.8, 3.0, uNoiseOctaves) * 0.5 + 0.5;
+        pfbm = 1.0 - abs(pfbm * 2.0 - 1.0); // ridged Perlin noise
+        
+        float wShape = worleyNoise(p3 * 2.5);
+        
+        // Blend Perlin-Worley for puffy cumulus shapes
+        float baseNoise = mix(pfbm, wShape, 0.45);
+        
+        // Coverage threshold
+        float cloud = remap(baseNoise, 1.0 - uCloudCoverage, 1.0, 0.0, 1.0);
+        cloud = clamp(cloud, 0.0, 1.0);
+        
+        // Detail erosion (using a high-frequency Perlin noise)
+        float detail = (perlinfbm(p3 * 6.0, 2.0, 3) * 0.5 + 0.5) * 0.35;
+        
+        // Erode edges of clouds
+        cloud = remap(cloud, detail, 1.0, 0.0, 1.0);
+        cloud = clamp(cloud, 0.0, 1.0);
+        
         return cloud * uCloudDensity;
+      }
+
+      float getCloudDensityLight(vec3 p3) {
+        float pfbm = perlinfbm(p3 * 0.8, 3.0, min(uNoiseOctaves, 4)) * 0.5 + 0.5;
+        pfbm = 1.0 - abs(pfbm * 2.0 - 1.0);
+        float wShape = worleyNoise(p3 * 2.5);
+        float baseNoise = mix(pfbm, wShape, 0.45);
+        float cloud = remap(baseNoise, 1.0 - uCloudCoverage, 1.0, 0.0, 1.0);
+        return clamp(cloud, 0.0, 1.0) * uCloudDensity;
+      }
+
+      float henyeyGreenstein(float cosTheta, float g) {
+        float g2 = g * g;
+        return (1.0 - g2) / (4.0 * 3.14159265358979 * pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5));
+      }
+
+      float cloudPhase(float cosTheta) {
+        return henyeyGreenstein(cosTheta, 0.6) * 0.7 + henyeyGreenstein(cosTheta, -0.3) * 0.3;
+      }
+
+      float getLightTransmittance(vec3 p3, vec3 L) {
+        float shadowDensity = 0.0;
+        float stepSize = 0.06;
+        for (int j = 1; j <= 3; j++) {
+          vec3 lightPos = p3 + L * (float(j) * stepSize);
+          shadowDensity += getCloudDensityLight(lightPos);
+        }
+        float d = shadowDensity * 3.0;
+        float beer = exp(-d);
+        float powder = 1.0 - exp(-d * 2.0);
+        return mix(beer, beer * powder, 0.55);
       }
 
       void main() {
         vec2 uv = vUv;
-        float finalV = 0.0;
         float aspect = uResolution.x / uResolution.y;
+
+        vec3 skyTop = uNightMode ? vec3(0.01, 0.02, 0.04) : vec3(0.02, 0.05, 0.15);
+        vec3 skyBot = uNightMode ? vec3(0.04, 0.06, 0.12) : vec3(0.3, 0.5, 0.8);
+        vec3 sky = mix(skyBot, skyTop, uv.y);
+
+        vec3 lightColor = uNightMode ? vec3(0.7, 0.85, 1.0) * 1.2 : vec3(1.0, 0.96, 0.88) * 1.5;
+        vec3 ambientColor = uNightMode ? vec3(0.03, 0.05, 0.1) : sky;
+        vec3 cloudBaseColor = uNightMode ? vec3(0.6, 0.65, 0.8) : vec3(0.98, 0.98, 1.0);
+
+        vec3 L = uNightMode ? normalize(vec3(-0.4, 0.3, 0.7)) : normalize(vec3(0.5, 0.3, 0.7));
+        vec3 V = normalize(vec3((uv - vec2(0.5, 0.2)) * vec2(aspect, 1.0), 1.0));
+        float cosTheta = dot(V, L);
+        float phase = cloudPhase(cosTheta);
+
+        vec4 accumColor = vec4(0.0);
         
         if (uBottomPerspective) {
           // Center noise coordinates
@@ -210,10 +261,35 @@ export class VisualEngine {
               cloud = clamp(cloud - b * uBiasStrength * 0.5, 0.0, 1.0);
             }
 
-            float power = uNightMode ? 0.8 : 1.5;
-            float layerV = pow(clamp((cloud - 0.5) * uContrast + 0.5, 0.0, 1.0), power);
-            finalV = max(finalV, layerV);
-            if (finalV > 0.99) break;
+            cloud = pow(clamp((cloud - 0.5) * uContrast + 0.5, 0.0, 1.0), uNightMode ? 0.8 : 1.5);
+
+            if (cloud > 0.01) {
+              float lightEnergy = 1.0;
+              if (!uRawMode) {
+                lightEnergy = getLightTransmittance(p3, L);
+              }
+
+              float heightNorm = float(i) / 5.0;
+              float heightDarkening = mix(0.45, 1.0, heightNorm);
+              lightEnergy *= heightDarkening;
+
+              vec3 layerColor = cloudBaseColor * (lightColor * (lightEnergy * phase + 0.15) + ambientColor * (1.0 - lightEnergy) * 0.35);
+
+              if (!uNightMode && !uRawMode) {
+                float edgeDensity = getCloudDensityLight(p3 + L * 0.05);
+                float silver = pow(max(1.0 - edgeDensity, 0.0), 2.0) * pow(max(cosTheta, 0.0), 3.0);
+                layerColor += lightColor * silver * 0.4;
+              }
+
+              float alpha = cloud * 0.45;
+              accumColor.rgb += (1.0 - accumColor.a) * layerColor * alpha;
+              accumColor.a += (1.0 - accumColor.a) * alpha;
+
+              if (accumColor.a > 0.98) {
+                accumColor.a = 1.0;
+                break;
+              }
+            }
           }
         } else {
           float horizonLine = 0.20;
@@ -242,23 +318,44 @@ export class VisualEngine {
                 cloud = clamp(cloud - b * uBiasStrength * 0.5, 0.0, 1.0);
               }
 
-              float power = uNightMode ? 0.8 : 1.5;
-              float layerV = pow(clamp((cloud - 0.5) * uContrast + 0.5, 0.0, 1.0), power);
-              finalV = max(finalV, layerV);
-              if (finalV > 0.99) break;
+              cloud = pow(clamp((cloud - 0.5) * uContrast + 0.5, 0.0, 1.0), uNightMode ? 0.8 : 1.5);
+
+              if (cloud > 0.01) {
+                float lightEnergy = 1.0;
+                if (!uRawMode) {
+                  lightEnergy = getLightTransmittance(p3, L);
+                }
+
+                float heightNorm = float(i) / 5.0;
+                float heightDarkening = mix(0.45, 1.0, heightNorm);
+                lightEnergy *= heightDarkening;
+
+                vec3 layerColor = cloudBaseColor * (lightColor * (lightEnergy * phase + 0.15) + ambientColor * (1.0 - lightEnergy) * 0.35);
+
+                if (!uNightMode && !uRawMode) {
+                  float edgeDensity = getCloudDensityLight(p3 + L * 0.05);
+                  float silver = pow(max(1.0 - edgeDensity, 0.0), 2.0) * pow(max(cosTheta, 0.0), 3.0);
+                  layerColor += lightColor * silver * 0.4;
+                }
+
+                float alpha = cloud * 0.45;
+                accumColor.rgb += (1.0 - accumColor.a) * layerColor * alpha;
+                accumColor.a += (1.0 - accumColor.a) * alpha;
+
+                if (accumColor.a > 0.98) {
+                  accumColor.a = 1.0;
+                  break;
+                }
+              }
             }
             
-            finalV *= smoothstep(0.0, 0.1, dist);
+            float fade = smoothstep(0.0, 0.1, dist);
+            accumColor.rgb *= fade;
+            accumColor.a *= fade;
           }
         }
 
-        vec3 skyTop = uNightMode ? vec3(0.0) : vec3(0.02, 0.05, 0.15);
-        vec3 skyBot = uNightMode ? vec3(0.0) : vec3(0.3, 0.5, 0.8);
-        vec3 sky = mix(skyBot, skyTop, uv.y);
-        
-        vec3 cloudColor = uNightMode ? vec3(0.98, 0.98, 1.0) : vec3(0.95, 0.98, 1.0);
-        vec3 color = mix(sky, cloudColor, finalV);
-
+        vec3 color = accumColor.rgb + sky * (1.0 - accumColor.a);
         gl_FragColor = vec4(color, 1.0);
       }
     `;
